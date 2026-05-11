@@ -1,3 +1,12 @@
-This is created by Seungmin (Henry) Lee
+#+ATTR_LATEX: :width 0.6/textwidth
+* Dealumination Project in University of Notre Dame
+Author: Seungmin (Henry) Lee
+Advisor: William F. Schneider
 
-The repository is for dealumination project during master degree program in University of Notre Dame
+** Description
+GMF folder - Global Mean Field (GMF) for 2nd order dealumination
+
+kMC - kinetic Monte Carlo for dealumination transferred from Zeolite Monte Carlo (ZMC) developed by Anshuman Goswami (https://github.com/Anshu2711/zmc/)
+
+** Acknowledgements
+- I would like to appreciate Professor William F. Schneider for his guidance
