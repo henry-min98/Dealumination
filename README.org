@@ -10,3 +10,4 @@ kMC - kinetic Monte Carlo for dealumination transferred from Zeolite Monte Carlo
 
 ** Acknowledgements
 - I would like to appreciate Professor William F. Schneider for his guidance
+- I also acknowledge Centre of Research Computing (CRC) at Notre Dame for providing computational resources
