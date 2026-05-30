@@ -55,78 +55,90 @@ class Zmc:
     Recording parameter: event_intval, time_intval 
     '''
  
-    def __init__(self):
-        '''
-        Initialize by reading the input files
-        '''
-        self.rseed = None # 10000
-        self.T = None #473
-        self.P_O2 = None
-        self.P_NH3 = None 
-        self.P_NO = None 
-        #self.P_tot = None #1 
-        #self.x_O2 = None #0.1
-        #self.x_NH3 = None #0.4
-        #self.x_NO = None #0.3 
-        self.max_events = None #100
-        self.max_time = None #360 
-        self.wtime = None #50
-        self.xl = None #10.0
-        self.yl = None #10.0
-        self.zl = None #10.0
-        self.al = None 
-        self.bl = None
-        self.cl = None
-        self.NCu = None #20 
-        self.xCuI = None #0.5
-        self.Ar = None #5.0E+08 
-        self.Ear = None #0.35 
-        self.Ap = None #4.0E+09
-        self.Eap = None #0.97
-        self.seed_mode = None #'auto'
-        self.autostat = 0 
+    def __init__(self, Ar, Ap, P_O2, D, rho_Cu, short=False):
+        # Reaction conditions (T, P_NO, P_NH3 fixed per paper)
+        self.rseed = 1510420280
+        self.T = 473.0
+        self.P_O2 = P_O2
+        self.P_NO = 1.00
+        self.P_NH3 = 1.00
+
+        # Kinetic parameters (Ea=0 per paper's isothermal parameterization)
+        self.Ar = Ar
+        self.Ear = 0.0
+        self.Ap = Ap
+        self.Eap = 0.0
+        self.kin_mode = 'steady_state'
+        self.red_mode = 'single'
+        self.dec_mode = 'sigmoidal'
+        self.Cut_sigmo = D
+        self.Slo_sigmo = 5.0
+        self.Cut_step = None
+        self.A_expo = None
+        self.B_expo = None
+
+        # CHA lattice (9x9x9 supercell)
+        self.al = 9
+        self.bl = 9
+        self.cl = 9
+        self.xl = None
+        self.yl = None
+        self.zl = None
+        from ase.io import read as ase_read
+        _atoms = ase_read(os.path.join(os.path.dirname(__file__), 'POSCAR_CHA'))
+        del _atoms[[a.index for a in _atoms if a.symbol == 'O']]
+        self.vol = _atoms.repeat([9, 9, 9]).get_volume()
+        self.NCu = round(rho_Cu * self.vol / 1000)
+        self.xCuI = 1.0
+        self.seed_mode = 'CHA'
+        self.short = short
+
+        # Simulation parameters
+        self.max_events = 50000000
+        self.max_time = 1000000.0
+        self.wtime = 36000.0
+
+        # Recording intervals
+        self.snap_int = interval()
+        self.snap_int.label = 'event'
+        self.snap_int.interval = 1000
+        self.proc_int = interval()
+        self.proc_int.label = 'event'
+        self.proc_int.interval = 1000000
+        self.spec_int = interval()
+        self.spec_int.label = 'time'
+        self.spec_int.interval = 1000000
+
+        # Internal counters and state
+        self.chastat = 5
+        self.autostat = 0
         self.manstat = 0
-        self.chastat = 0
-        self.kin_mode = None
-        self.red_mode = None #'single'
-        self.dec_mode = None #'exponential'
-        self.dec_counters = [0,0,0]  #Lists to validate the expo/sigmo/step dependence. 
-        self.expo_count = 0 
-        self.sig_count = 0 
-        self.step_count = 0 
-        self.steady_count = 0 
+        self.dec_counters = [0, 2, 0]
+        self.expo_count = 0
+        self.sig_count = 0
+        self.step_count = 0
+        self.steady_count = 6
         self.tred_count = 0
         self.tox_count = 0
         self.simutime = 0
         self.simevents = 0
         self.oxievents = 0
         self.redevents = 0
-        self.Cut_sigmo = None 
-        self.Cut_step = None
-        self.n_O2 = 0 
+        self.n_O2 = 0
         self.n_NO = 0
-        self.n_NH3 = 0 
-        self.statistics = None
+        self.n_NH3 = 0
+        self.statistics = False
         self.Cu_list = []
         self.indices = []
-        self.snap_int = interval()
-        self.proc_int = interval()
-        self.spec_int = interval()
-        self.p2ind = {} 
+        self.p2ind = {}
         self.min_distance = {}
         self.frequency = {}
-        if 'error_output.txt' in os.listdir():
-            os.system('rm error_output.txt')
-        if 'raw_outputs.txt' in os.listdir():
-            os.system('rm raw_outputs.txt')
-        if 'event_outputs.txt' in os.listdir():
-            os.system('rm event_outputs.txt')
-        stat1 = self.read_simu_input()
-        stat2 = self.read_box_input()
-        stat3 = self.read_kin_input()
-        if stat1 == False or stat2 == False or stat3 == False:
-            print('kMC calculation exitting') 
-            exit()
+
+        for f in ['error_output.txt', 'raw_outputs.txt', 'event_outputs.txt']:
+            if f in os.listdir():
+                os.system('rm ' + f)
+
+        self.seed_cha_auto()
         self.read_outputs()
                   
        
@@ -449,14 +461,14 @@ class Zmc:
         self.NCu = self.NCuI + self.NCuII
         self.al = int(self.al) ; self.bl = int(self.bl) ; self.cl = int(self.cl) 
         from ase.io import read 
-        atoms = read('/afs/crc.nd.edu/user/a/agoswami/zmc/zmc/POSCAR_CHA')
+        atoms = read(os.path.join(os.path.dirname(__file__), 'POSCAR_CHA'))
         del atoms[[atom.index for atom in atoms if atom.symbol=='O']]           # Delete all O atoms 
         atomsrep = atoms.repeat([self.al,self.bl,self.cl])
         nums = [a for a in range(0,len(atomsrep))]
         seed(self.rseed)
          # While seeding, have to ensure that Cu locations are consistent with Lowenstein's rule. The following routine ensures this  
         for i in range(1,self.NCuI+1):
-            print('Seed_on_site: ', i)
+            #print('Seed_on_site: ', i)
             if i == 0:
                 ind = choice(nums)
                 #label_pos.update({i+1:atomsrep[ind].position})
@@ -480,7 +492,7 @@ class Zmc:
                 self.indices.append(ind)
                 self.p2ind.update({tuple(atomsrep[ind].position):ind})
         for i in range(self.NCuI+1,int(self.NCu)+1):
-            print('Seed_on_site: ', i)
+            #print('Seed_on_site: ', i)
             if len(self.Cu_list) == 0:
                 ind = choice(nums)
                 #label_pos.update({i+1:atomsrep[ind].position})
@@ -503,10 +515,10 @@ class Zmc:
                 self.Cu_list.append(Copper(lab=i,state=2,pos=atomsrep[ind].position))
                 self.indices.append(ind)
                 self.p2ind.update({tuple(atomsrep[ind].position):ind})
-        f = open('indices.txt','w')
-        for a in self.indices:
-            f.write('{0}    '.format(a))
-        f.close()
+        #f = open('indices.txt','w')
+        #for a in self.indices:
+        #    f.write('{0}    '.format(a))
+        #f.close()
         #print('The Cu indices are', self.indices)
         #print('The diictionary is', self.p2ind)
     def seed_box_manual(self):

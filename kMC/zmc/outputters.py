@@ -36,7 +36,7 @@ def EWMA(self,t,x):
     for i in range(0,len(x)):
         UCL.append(EWMA[-1] + L*sig*np.sqrt(lam*(1-np.power((1-lam),i))/(2-lam)))
         LCL.append(EWMA[-1] - L*sig*np.sqrt(lam*(1-np.power((1-lam),i))/(2-lam)))
-    print('Plotting things here')
+    #print('Plotting things here')
     #plt.plot(t,UCL,'-')
     #plt.plot(t,LCL,'-')
     #plt.plot(t,EWMA,'*')
@@ -57,7 +57,7 @@ def EWMA(self,t,x):
     if(first/len(x)<pc):
         print("Simulation sufficiently converged. Calculating averages")
     else:
-        print("Simulation not converged")
+        #print("Simulation not converged")
         return False
     for i in range(first,len(x)):
         supsum = supsum + nums[i]/nsize
@@ -70,17 +70,23 @@ def EWMA(self,t,x):
     for i in range(0,len(x)):
         if EWMA[i] < UCL[i] and EWMA[i] > LCL[i]:
             fin_nums.append(nums[i])
-    print('The modified fraction is:',statistics.mean(fin_nums)/nsize)
-    print('The median fraction is:', statistics.median(nums[first :])/nsize)
+    #print('The modified fraction is:',statistics.mean(fin_nums)/nsize)
+    #print('The median fraction is:', statistics.median(nums[first :])/nsize)
     return(supsum/flag,flag,covlist,sd)
 
 @monkeypatch_class(Zmc)
 def get_fraction(self):
-    ss,nc,cl,std = self.EWMA(self.t,self.tw)
-    print('The unmodified fraction is:', ss)
+    result = self.EWMA(self.t,self.tw)
+    if result is False:
+        ss = np.mean(self.tw) / self.NCu
+        print('EWMA not converged, using mean of recorded CuII fraction:', ss)
+        return ss, None, None, None
+    ss,nc,cl,std = result
+    #print('The unmodified fraction is:', ss)
+    return ss, nc, cl, std
    
 @monkeypatch_class(Zmc)
 def get_rate(self):
     model = np.polyfit(self.t[self.cutoff :],self.rev[self.cutoff :],1)
-    print('The rate is:',model[0])
-    
+    #print('The rate is:',model[0]/self.NCu)
+    return model[0]/self.NCu

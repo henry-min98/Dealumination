@@ -149,14 +149,14 @@ def residual(arr, N):
 @monkeypatch_class(Zmc)
 def read_outputs(self):
     k_B = 8.61733034E-5
-    print('The outputs are:','\n')
-    print('Pairing prefactor =',self.Ap)
-    print('Pressure O2 =',self.P_O2)
-    print('Activation factor =',self.Eap)
-    print('Temperature =',self.dec_mode)
-    print('Dimensions=',self.xl,self.yl,self.zl)
-    print('CuI=',self.NCuI) 
-    print('CuII=',self.NCuII)
+    #print('The outputs are:','\n')
+    #print('Pairing prefactor =',self.Ap)
+    #print('Pressure O2 =',self.P_O2)
+    #print('Activation factor =',self.Eap)
+    #print('Temperature =',self.dec_mode)
+    #print('Dimensions=',self.xl,self.yl,self.zl)
+    #print('CuI=',self.NCuI)
+    #print('CuII=',self.NCuII)
     #print('Rate constant is',self.Ap*self.P_O2*np.exp(-1*self.Eap/(k_B*self.T))*self.expo_function(1.0))
 
 @monkeypatch_class(Zmc)
@@ -290,7 +290,7 @@ def calculate(self):
     #self.init_proc()
     ###### Now diving into the kMC algorithm ############# 
     if self.kin_mode == 'steady_state' and self.red_mode == 'single':
-        print('Shall we ?')
+        #print('Shall we ?')
         #self.calc_steady_state_standard_periodic()
         self.calc_steady_state_standard_periodic()
     elif self.kin_mode == 'transient_oxidation':
@@ -381,7 +381,7 @@ def calc_steady_state_standard(self):
         try:
             exec_time = random()/self.rate_nums[ind]
         except:
-            print('No more oxidations!')
+            #print('No more oxidations!')
             break                      #This is a contingency for the case when all ions are Copper 1's and are unable to be oxidized. 
         ##### Update the time and event counter ####################################
         self.simutime += exec_time
@@ -429,12 +429,12 @@ def calc_steady_state_standard_periodic(self):
     random.seed(int(self.rseed))
     #print('Net coppers:',len(self.Cu_list))
     #print(self.max_events)  #This is the standard kMC algorithm.
-    print('Volume=',self.vol)
+    #print('Volume=',self.vol)
     if self.seed_mode == 'CHA':
         from ase.io import read 
         #atoms = read('/afs/crc.nd.edu/user/a/agoswami/zmc/zmc/POSCAR_CHA')
-        atoms = read('/afs/crc.nd.edu/user/a/agoswami/zmc/zmc/POSCAR_CHA')
-        del atoms[[atom.index for atom in atoms if atom.symbol=='O']]           # Delete all O atoms 
+        atoms = read(os.path.join(os.path.dirname(__file__), 'POSCAR_CHA'))
+        del atoms[[atom.index for atom in atoms if atom.symbol=='O']]           # Delete all O atoms
         atomsrep = atoms.repeat([self.al,self.bl,self.cl])
     time = [0]
     ones = [self.NCuI]
@@ -450,15 +450,16 @@ def calc_steady_state_standard_periodic(self):
     self.snap_events = [0]
     n_int = 1
     n_int_snap = 1
-    simtime = [] ; os = [] ; distances =  [] 
-    print('The label is', self.spec_int.label)
+    simtime = [] ; ox_frac = [] ; distances =  []
+    prev_ss = None
+    #print('The label is', self.spec_int.label)
     while True: #self.simevents < self.max_events or self.simutime < self.max_time:
         t_end = timer()
         if (t_end-t_start) > self.wtime:
             break     
         #### If there are no pairable coppers present ########################################
         if len(self.rate_dict) == 0:
-            print('No more pairable coppers here')
+            #print('No more pairable coppers here')
             break
         #### First we generate a random number and get the index of the executable event ###### 
         r1 = random.uniform(0,1)
@@ -472,14 +473,14 @@ def calc_steady_state_standard_periodic(self):
         if ind == None:
             #print(self.site_list)
             #print(r1)
-            print('No more pairable coppers present')
+            #print('No more pairable coppers present')
             break
         #### Subsequently, we advance the simulation clock time by the rate of the event
         if self.rate_nums[ind] != 0:
             r2 = random.uniform(0,1)
             exec_time = -1*np.log(r2)/sum(self.rate_nums)
         else:
-            print('No more oxidations!')
+            #print('No more oxidations!')
             break    #This is a contingency for the case when all ions are Copper 1's and are unable to be oxidized.  
         ##### Update the time and event counter ####################################
         self.simutime += exec_time
@@ -546,7 +547,7 @@ def calc_steady_state_standard_periodic(self):
                 ones = [] ; time = [] ; twos = [] ; events = [] ; oxidevents = [] ; redevents = [] ; n_int = 0
                 self.spec_int.interval = 10**b 
                 self.max_time = 100*self.spec_int.interval
-                print('The simulation time:',self.simutime,'for which species interval:',self.spec_int.interval)
+                #print('The simulation time:',self.simutime,'for which species interval:',self.spec_int.interval)
         temp_pos = []
         if self.snap_int.label == 'event':
             if self.simevents >= n_int_snap*self.snap_int.interval:    
@@ -575,82 +576,42 @@ def calc_steady_state_standard_periodic(self):
                 oxidevents.append(self.oxievents)
                 redevents.append(self.redevents)
                 n_int += 1
-                print(n_int, timer()-t_start)
+                #print(n_int, timer()-t_start)
         else:
             if self.simutime >= n_int*self.spec_int.interval:
                 while self.simutime >= n_int*self.spec_int.interval:
                     ones.append(self.NCuI)
-                    time.append(n_int*self.spec_int.interval)                 #time.append(self.simutime)
+                    time.append(n_int*self.spec_int.interval)
                     twos.append(self.NCuII)
                     events.append(self.simevents)
                     oxidevents.append(self.oxievents)
                     redevents.append(self.redevents)
-                    n_int += 1       
-                    print(n_int, timer()-t_start)
+                    n_int += 1
+                if self.short and len(twos) >= 20:
+                    result = self.EWMA(time, twos)
+                    if result is not False:
+                        curr_ss = result[0]
+                    else:
+                        curr_ss = np.mean(twos[len(twos)//2:]) / self.NCu
+                    if prev_ss is not None and abs(curr_ss - prev_ss) / (prev_ss + 1e-12) < 0.01:
+                        break
+                    prev_ss = curr_ss
         #self.refresh_mic()
         self.refresh_rlist()
-        #print(r2,self.simutime,self.NCuI)
-        #print('This',self.simevents, self.NCuI, timer()-t_start)
-        #print(self.simevents)
         simtime.append(self.simutime)
-        os.append(self.NCuI/self.NCu)
+        ox_frac.append(self.NCuI/self.NCu)
         if self.simevents == self.max_events or self.simutime >= self.max_time:
             #print(self.rate_nums)
-            print('Events done')
+            #print('Events done')
             break
-        '''
-        if self.simevents == 3:
-            print(exec_time,",",self.site_list[ind])
-            break
-         '''
-    print('The total time taken is:',self.simutime)
-    wall_time = timer() - t_start 
-    f = open('raw_outputs.txt','w')
-    f.write('Events           Time                      CuI                   CuII\n')
-    for a,b,c,d in zip(time,ones,twos,events):
-        f.write(' ' +str('{:03d}'.format(d)))
-        f.write('           ')
-        f.write(str('{:0.12f}'.format(a)))
-        f.write('                   ')
-        f.write(str('{:03d}'.format(b)))
-        f.write('                   ')
-        f.write(str('{:03d}'.format(c)))
-        f.write('\n')
-    f.close()
-    f = open('event_outputs.txt','w')
-    f.write('Events           Time                      Oxi_events                   Red_events\n')
-    for a,b,c,d in zip(time,oxidevents,redevents,events):
-        f.write(' ' +str('{:03d}'.format(d)))
-        f.write('           ')
-        f.write(str('{:0.5f}'.format(a)))
-        f.write('                      ')
-        f.write(str('{:03d}'.format(b)))
-        f.write('                          ')
-        f.write(str('{:03d}'.format(c)))
-        f.write('\n')
-    f.close()
-    if self.statistics == True:
-        f = open('Distance_statistics.txt','w')
-        for d in distances:
-            f.write(str(d))
-            f.write('     ')
-        f.close()
-        f = open('Minimum_distance_frequencies.txt','w')
-        for k in self.min_distance.keys():
-            f.write('{0}                     {1}                   {2}\n'.format(k, self.indices[k-1], self.frequency[k])) # self.min_distance[k]
-        f.close()
-    self.t = time 
-    self.o = ones 
+    #print('The total time taken is:',self.simutime)
+    wall_time = timer() - t_start
+    self.t = time
+    self.o = ones
     self.tw = twos
-    self.ev = events 
+    self.ev = events
     self.oev = oxidevents
     self.rev = redevents
-    f.close()
-    f = open('simulation_outputs.txt','w')
-    f.write('The simulation time taken by the code is {0} seconds\n'.format(self.simutime))
-    f.write('The total calculation time taken by the code is {0} seconds\n'.format(wall_time))
-    f.write('The total kMC events simulated by the code is {0}'.format(self.simevents))
-    f.close()
     #print(self.snap_times)
     #print(self.positions)
     #plt.plot(simtime,os)
@@ -911,8 +872,8 @@ def minimum_image_convention(self):    #Since the Coppers wont be moving, the on
     if self.seed_mode == 'CHA':
         from ase.io import read 
         #atoms = read('/afs/crc.nd.edu/user/a/agoswami/zmc/zmc/POSCAR_CHA')
-        atoms = read('/afs/crc.nd.edu/user/a/agoswami/zmc/zmc/POSCAR_CHA')
-        del atoms[[atom.index for atom in atoms if atom.symbol=='O']]           # Delete all O atoms 
+        atoms = read(os.path.join(os.path.dirname(__file__), 'POSCAR_CHA'))
+        del atoms[[atom.index for atom in atoms if atom.symbol=='O']]           # Delete all O atoms
         atomsrep = atoms.repeat([self.al,self.bl,self.cl])
         self.vol = atomsrep.get_volume()
     else:
@@ -952,8 +913,8 @@ def minimum_image_convention(self):    #Since the Coppers wont be moving, the on
         self.frequency[c.label] = []                       # This initializes the dictionary of frequencies of every ion which can pair if in +1 state. 
     #print(nearest_neigh)
     #print(self.pairs)
-    print('The minimum distance is: ',min_distance)
-    print('The maximum distance is: ',max_distance) 
+    #print('The minimum distance is: ',min_distance)
+    #print('The maximum distance is: ',max_distance)
     if self.statistics == True:
         f = open('Static_distances.txt','w')
         for d in d_list:
@@ -1164,7 +1125,7 @@ def calc_trans_ox(self):
         if ind == None:
             #print(self.site_list)
             #print(r1)
-            print('No more pairable coppers present')
+            #print('No more pairable coppers present')
             break
         '''
         #### Subsequently, we advance the simulation clock time by the rate of the event
@@ -1172,7 +1133,7 @@ def calc_trans_ox(self):
             r2 = random.uniform(0,1)
             exec_time = -1*np.log(r2)/sum(self.rate_nums)
         else:
-            print('No more oxidations!')
+            #print('No more oxidations!')
             break    #This is a contingency for the case when all ions are Copper 1's and are unable to be oxidized.  
         ##### Update the time and event counter ####################################
         self.simutime += exec_time
@@ -1295,8 +1256,8 @@ def refresh_mic_TOX(self):
     if self.seed_mode == 'CHA':
         from ase.io import read 
         #atoms = read('/afs/crc.nd.edu/user/a/agoswami/zmc/zmc/POSCAR_CHA')
-        atoms = read('/afs/crc.nd.edu/user/a/agoswami/zmc/zmc/POSCAR_CHA')
-        del atoms[[atom.index for atom in atoms if atom.symbol=='O']]           # Delete all O atoms 
+        atoms = read(os.path.join(os.path.dirname(__file__), 'POSCAR_CHA'))
+        del atoms[[atom.index for atom in atoms if atom.symbol=='O']]           # Delete all O atoms
         atomsrep = atoms.repeat([self.al,self.bl,self.cl])
         self.vol = atomsrep.get_volume()
     else:
@@ -1594,14 +1555,14 @@ def calc_steady_state_standard_null(self):
         if ind == None:
             #print(self.site_list)
             #print(r1)
-            print('No more pairable coppers present')
+            #print('No more pairable coppers present')
             break
         #### Subsequently, we advance the simulation clock time by the rate of the event
         if self.rate_nums[ind] != 0:
             r2 = random.uniform(0,1)
             exec_time = -1*np.log(r2)/sum(self.rate_nums)
         else:
-            print('No more oxidations!')
+            #print('No more oxidations!')
             break    #This is a contingency for the case when all ions are Copper 1's and are unable to be oxidized.  
         ##### Update the time and event counter ####################################
         self.simutime += exec_time
